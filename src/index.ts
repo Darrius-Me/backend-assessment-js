@@ -8,7 +8,7 @@
  * Learn more at https://developers.cloudflare.com/workers/
  */
 
-export interface Env {
+// export interface Env {
 	// Example binding to KV. Learn more at https://developers.cloudflare.com/workers/runtime-apis/kv/
 	// MY_KV_NAMESPACE: KVNamespace;
 	//
@@ -20,14 +20,31 @@ export interface Env {
 	//
 	// Example binding to a Service. Learn more at https://developers.cloudflare.com/workers/runtime-apis/service-bindings/
 	// MY_SERVICE: Fetcher;
-}
+// }
 
-export default {
-	async fetch(
-		request: Request,
-		env: Env,
-		ctx: ExecutionContext
-	): Promise<Response> {
-		return new Response("Hello World!");
-	},
-};
+// export default {
+// 	async fetch(
+// 		request: Request,
+// 		env: Env,
+// 		ctx: ExecutionContext
+// 	): Promise<Response> {
+// 		console.log("hello")
+// 		return new Response("Hello World!");
+// 	},
+// };
+
+import express from 'express'
+import productRouter from './routes/product.js'
+import { config } from 'dotenv'
+
+config()
+
+const app = express()
+app.use(express.json())
+const { PORT } = process.env
+
+app.listen(PORT, ()=> {
+	console.log("Running server on https://localhost:" + PORT)
+})
+
+app.use('/api/products', productRouter)
