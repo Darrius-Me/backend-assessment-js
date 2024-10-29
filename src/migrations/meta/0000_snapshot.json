@@ -1,5 +1,5 @@
 {
-  "id": "97c7a305-b0d5-48cb-9490-70cf8743a4e5",
+  "id": "088d3142-92de-49f7-8c53-8fdec6ef2684",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -13,6 +13,12 @@
           "type": "serial",
           "primaryKey": true,
           "notNull": true
+        },
+        "productID": {
+          "name": "productID",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
         },
         "title": {
           "name": "title",
@@ -30,15 +36,13 @@
           "name": "created_at",
           "type": "date",
           "primaryKey": false,
-          "notNull": false,
-          "default": "now()"
+          "notNull": false
         },
         "updated_at": {
           "name": "updated_at",
           "type": "date",
           "primaryKey": false,
-          "notNull": false,
-          "default": "now()"
+          "notNull": false
         },
         "sku": {
           "name": "sku",

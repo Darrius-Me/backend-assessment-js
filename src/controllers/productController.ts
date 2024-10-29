@@ -4,7 +4,10 @@ import { database } from '../db/database.js';
 import { eq } from 'drizzle-orm';
 
 interface Variant {
+  product_id: number
   title: string
+  created_at: string
+  updated_at: string
   sku: string
 }
 
@@ -19,17 +22,14 @@ interface ProductResponse {
 }
 
 interface ProductEntry { 
+  productID: number
   title: string
   tags: string
+  created_at: string
+  updated_at: string
   sku: string
 }
 
-interface ProductUpdate {
-  id: number
-  title: string
-  tags: string
-  sku: string
-}
 
 export const getProducts = async (req: Request, res: Response) => {
   try {
@@ -37,8 +37,8 @@ export const getProducts = async (req: Request, res: Response) => {
     var productList = await database.select().from(productSchema)
     
     //if product list is empty, fetch from an endpoint and populate the product list database
-    if(productList.length === 0) {
-      console.log("Product list empty. Starting to populate.")
+    // if(productList.length === 0) {
+    //   console.log("Product list empty. Starting to populate.")
       const productArray: ProductEntry[] = [] 
 
       //fetch data from a third-party endpoint and check response if okay
@@ -53,12 +53,18 @@ export const getProducts = async (req: Request, res: Response) => {
         const { title, tags, variants } = product
 
         variants.map( variant => {
+          const variantID = variant.product_id
           const variantTitle = variant.title
           const variantSKU = variant.sku
+          const created_at = variant.created_at
+          const updated_at = variant.created_at
 
           productArray.push({
+            productID: variantID,
             title: (title || "") + " " + (variantTitle || ""),
             tags: tags || "",
+            created_at: created_at,
+            updated_at: updated_at,
             sku: variantSKU || ""
           })
         })
@@ -69,8 +75,11 @@ export const getProducts = async (req: Request, res: Response) => {
         return await database
           .insert(productSchema)
           .values({
+            productID: product.productID,
             title: product.title,
             tags: product.tags,
+            created_at: product.created_at,
+            updated_at: product.updated_at,
             sku: product.sku
           })
           .execute();
@@ -78,8 +87,9 @@ export const getProducts = async (req: Request, res: Response) => {
       await Promise.all(insertPromises)
       
       //return a message if products has been inserted
+      console.log('Successfully populated database.')
       return res.status(200).json({ message: 'Products have been inserted.' })
-    }
+    // }
 
     //return a message if products have already been inserted
     return res.status(409).json({ message: 'Products have already been inserted.' })
@@ -93,9 +103,9 @@ export const postProducts = async (req: Request, res: Response) => {
     //Get the product list
     var productList = await database.select().from(productSchema)
     
-    //if product list is empty, fetch from an endpoint and populate the product list database
-    if(productList.length === 0) {
-      console.log("Product list empty. Starting to populate.")
+    //Fetch from an endpoint and populate the product list database
+    // if(productList.length === 0) {
+      // console.log("Product list empty. Starting to populate.")
       const productArray: ProductEntry[] = [] 
 
       //fetch data from a third-party endpoint and check response if okay
@@ -104,18 +114,25 @@ export const postProducts = async (req: Request, res: Response) => {
         return res.status(500).json({ message: 'Error fetching data from external API.' })
       }
       const data = await response.json() as ProductResponse
+      console.log("Third-party API fetched.")
       
       //prepare and map the records for insertion
       data.products.map( product => {
         const { title, tags, variants } = product
 
         variants.map( variant => {
+          const variantID = variant.product_id
           const variantTitle = variant.title
           const variantSKU = variant.sku
+          const created_at = variant.created_at
+          const updated_at = variant.created_at
 
           productArray.push({
+            productID: variantID,
             title: (title || "") + " " + (variantTitle || ""),
             tags: tags || "",
+            created_at: created_at,
+            updated_at: updated_at,
             sku: variantSKU || ""
           })
         })
@@ -126,11 +143,14 @@ export const postProducts = async (req: Request, res: Response) => {
         return await database
           .insert(productSchema)
           .values({
+            productID: product.productID,
             title: product.title,
             tags: product.tags,
+            created_at: product.created_at,
+            updated_at: product.updated_at,
             sku: product.sku
           })
-          .execute();
+          .execute()
       })
       await Promise.all(insertPromises)
 
@@ -138,12 +158,14 @@ export const postProducts = async (req: Request, res: Response) => {
       productList = await database.select().from(productSchema)
       
       //return a success message and a JSON for response
+      console.log('Successfully populated database.')
       return res.status(200).json({ message: 'Products have been inserted.', productList })
-    }
+    // }
     
     //return a JSON and a message if products have already been inserted
-    return res.status(200).json({ message: 'Products have already been inserted.', productList })
+    // return res.status(200).json({ message: 'Products have already been inserted.', productList })
   } catch (error) {
+    console.log(error)
     return res.status(500).json({ message: 'Error retrieving products.' });
   }
 }

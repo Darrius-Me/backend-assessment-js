@@ -170,7 +170,7 @@ dist
 
 .dev.vars
 
-*.sql
-.sql
+# *.sql
+# .sql
 
 .vscode

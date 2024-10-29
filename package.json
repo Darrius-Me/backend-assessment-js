@@ -23,7 +23,6 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^0.10.1",
     "@types/cors": "^2.8.17",
     "@types/dotenv": "^8.2.3",
     "cors": "^2.8.5",
