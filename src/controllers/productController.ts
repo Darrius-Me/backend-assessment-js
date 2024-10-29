@@ -24,47 +24,65 @@ interface ProductEntry {
   sku: string
 }
 
+interface ProductUpdate {
+  id: number
+  title: string
+  tags: string
+  sku: string
+}
+
 export const getProducts = async (req: Request, res: Response) => {
   try {
-    const productList = await database.select().from(productSchema)
+    //Get the product list
+    var productList = await database.select().from(productSchema)
     
+    //if product list is empty, fetch from an endpoint and populate the product list database
     if(productList.length === 0) {
       console.log("Product list empty. Starting to populate.")
       const productArray: ProductEntry[] = [] 
 
-      const response = await fetch('https://02557f4d-8f03-405d-a4e7-7a6483d26a04.mock.pstmn.io/get')
+      //fetch data from a third-party endpoint and check response if okay
+      const response = await fetch('https://02557f4d-8f03-405d-a4e7-7a6483d26a04.mock.pstmn.io/getProducts')
+      if(!response.ok) {
+        return res.status(500).json({ message: 'Error fetching data from external API.' })
+      }
       const data = await response.json() as ProductResponse
       
-      data.products.forEach(product => {
+      //prepare and map the records for insertion
+      data.products.map( product => {
         const { title, tags, variants } = product
 
-        variants.forEach(variant => {
+        variants.map( variant => {
           const variantTitle = variant.title
           const variantSKU = variant.sku
 
           productArray.push({
-            title: title + " " + variantTitle,
-            tags: tags,
-            sku: variantSKU
+            title: (title || "") + " " + (variantTitle || ""),
+            tags: tags || "",
+            sku: variantSKU || ""
           })
         })
       })
 
-      productArray.forEach( async product => {
-        const newProducts = await database
+      //insert the records to the database
+      const insertPromises = productArray.map(async product => {
+        return await database
           .insert(productSchema)
           .values({
             title: product.title,
             tags: product.tags,
             sku: product.sku
           })
-          .execute()
-        
-        console.log('Added ' + product.title)
+          .execute();
       })
+      await Promise.all(insertPromises)
+      
+      //return a message if products has been inserted
       return res.status(200).json({ message: 'Products have been inserted.' })
     }
-    return res.status(200).json({ message: 'Products have already been inserted.' })
+
+    //return a message if products have already been inserted
+    return res.status(409).json({ message: 'Products have already been inserted.' })
   } catch (error) {
     return res.status(500).json({ message: 'Error retrieving products.' });
   }
@@ -72,47 +90,58 @@ export const getProducts = async (req: Request, res: Response) => {
 
 export const postProducts = async (req: Request, res: Response) => {
   try {
+    //Get the product list
     var productList = await database.select().from(productSchema)
     
+    //if product list is empty, fetch from an endpoint and populate the product list database
     if(productList.length === 0) {
       console.log("Product list empty. Starting to populate.")
       const productArray: ProductEntry[] = [] 
 
+      //fetch data from a third-party endpoint and check response if okay
       const response = await fetch('https://02557f4d-8f03-405d-a4e7-7a6483d26a04.mock.pstmn.io/getProducts')
+      if(!response.ok) {
+        return res.status(500).json({ message: 'Error fetching data from external API.' })
+      }
       const data = await response.json() as ProductResponse
       
-      data.products.forEach(product => {
+      //prepare and map the records for insertion
+      data.products.map( product => {
         const { title, tags, variants } = product
 
-        variants.forEach(variant => {
+        variants.map( variant => {
           const variantTitle = variant.title
           const variantSKU = variant.sku
 
           productArray.push({
-            title: title + " " + variantTitle,
-            tags: tags,
-            sku: variantSKU
+            title: (title || "") + " " + (variantTitle || ""),
+            tags: tags || "",
+            sku: variantSKU || ""
           })
         })
       })
 
-      productArray.forEach(product => {
-        const newProducts = database
+      //insert the records to the database
+      const insertPromises = productArray.map(async product => {
+        return await database
           .insert(productSchema)
           .values({
             title: product.title,
             tags: product.tags,
             sku: product.sku
           })
-          .execute()
-
-        console.log('Added ' + product.title)
+          .execute();
       })
+      await Promise.all(insertPromises)
+
+      //get the updated product list to be returned as JSON
       productList = await database.select().from(productSchema)
-      console.log(productList)
+      
+      //return a success message and a JSON for response
       return res.status(200).json({ message: 'Products have been inserted.', productList })
     }
-    console.log(productList)
+    
+    //return a JSON and a message if products have already been inserted
     return res.status(200).json({ message: 'Products have already been inserted.', productList })
   } catch (error) {
     return res.status(500).json({ message: 'Error retrieving products.' });
@@ -121,18 +150,25 @@ export const postProducts = async (req: Request, res: Response) => {
 
 export const updateProducts = async (req: Request, res: Response) => {
   try {
+    //Get the product list
     var productList = await database.select().from(productSchema)
-    var productArray: ProductEntry[] = []
 
-    productList.forEach(product => {
-      productArray.push({
-        title: (product.title || "") + (product.sku || ""),
-        tags: product.tags || "",
-        sku: product.sku || ""
-      })
+    //Return a 404 message if the table has no records
+    if(productList.length === 0) {
+      return res.status(404).json({ message: 'There are no products listed.' })
+    }
+
+    //Update the title on every record in the product list 
+    productList.map( async product => {
+      await database
+        .update(productSchema)
+        .set({title: (product.title || "") + (product.sku || "")})
+        .where(eq(productSchema.id, product.id))
+
     })
 
-    return res.status(200).json({ message: 'Products have been updated.', productArray })
+    //return a success message
+    return res.status(200).json({ message: 'Products have been updated.' })
   } catch (error) {
     return res.status(500).json({ message: 'Error updating products.' })
   }
@@ -140,20 +176,24 @@ export const updateProducts = async (req: Request, res: Response) => {
 
 export const deleteProducts = async (req: Request, res: Response) => {
   try {
+    //Get the ID from the URL
     const { id } = req.params
 
+    //Get the records using the ID
     const productSelect = await database.select().from(productSchema).where(eq(productSchema.id, id as any))
 
+    //Return a 404 message if the record does not exist
     if(productSelect.length === 0) {
       return res.status(404).json({ message: 'Product does not exist.' })
     }
 
-
+    //Delete the record if it exist
     const result = await database
       .delete(productSchema)
       .where(eq(productSchema.id, id as any))
       .execute()
 
+    //return a successful message
     return res.status(200).json({ message: 'Product has been deleted.' })
   } catch (error) {
     return res.status(500).json({ message: 'Error deleting products.' })
